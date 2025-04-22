@@ -8,4 +8,9 @@ pytest
 pytest-asyncio
 httpx
 pydantic-settings
+google-generativeai
+python-multipart
+PyMuPDF
+Pillow
+
 
