@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     postgres_user: str = Field(..., env="postgres_user")
     postgres_password: str = Field(..., env="postgres_password")
     DATABASE_URL: str = Field(default=None, env="DATABASE_URL") 
+    GEMINI_API_KEY: str = Field(..., env="GEMINI_API_KEY")
+
 
 
     class Config:

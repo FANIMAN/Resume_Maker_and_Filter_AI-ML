@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.env.*
+*.sqlite3
+*.log
+*.db
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# Pytest cache
+.pytest_cache/
+
+# VSCode settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# MyPy
+.mypy_cache/
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Build / dist
+build/
+dist/
+*.egg
+.eggs/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Other IDEs
+.idea/
+*.iml
+
+# __Pycharm__
+*.idea/
+
+# System
+Thumbs.db

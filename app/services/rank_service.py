@@ -1,27 +1,149 @@
+import google.generativeai as genai
+from fastapi import UploadFile
 from typing import Tuple
-import random
 import re
 import base64
+import os
+import requests
+import fitz  # PyMuPDF
+# from docx import Document
+# from io import BytesIO
+import io
+from PIL import Image
 
 
-def mock_score_and_feedback(resume: str, job: str) -> Tuple[int, str]:
-    resume = resume.lower()
-    job = job.lower()
 
-    job_keywords = set(re.findall(r'\b\w+\b', job))
-    resume_words = set(re.findall(r'\b\w+\b', resume))
+from app.config import settings
 
-    matches = job_keywords.intersection(resume_words)
-    match_count = len(matches)
-    total_keywords = len(job_keywords) or 1
+# Configure Gemini SDK
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
-    score = int((match_count / total_keywords) * 100)
-    score = max(40, min(score, 95))
+# Initialize the Gemini Vision model
+model = genai.GenerativeModel("models/gemini-1.5-flash")
 
-    feedback = f"Matched {match_count} out of {total_keywords} keywords. Score: {score}/100."
 
-    return score, feedback
+def gemini_score_and_feedback(resume: str, job: str) -> tuple[int, str]:
+    prompt = f"""
+Compare this resume to the job description and return a numeric score (0-100) and a short feedback summary.
 
+Resume:
+{resume}
+
+Job Description:
+{job}
+"""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
+
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+
+        # Extract content safely
+        model_output = result["candidates"][0]["content"]["parts"][0]["text"]
+        
+        # Basic heuristic to extract score from model's output
+        import re
+        score_match = re.search(r"(\d{1,3})", model_output)
+        score = int(score_match.group(1)) if score_match else 50
+
+        return score, model_output
+
+    except Exception as e:
+        return 50, f"Error during Gemini call: {str(e)}"
+
+# def process_image_for_gemini(image: UploadFile) -> str:
+#     try:
+#         # Read image bytes
+#         image_bytes = image.file.read()
+#         pil_image = Image.open(io.BytesIO(image_bytes))
+
+#         # Prepare the image for Gemini API (example prompt, you can adjust it as needed)
+#         prompt = "Is this image a professional headshot suitable for a job application?"
+
+#         # Make API call to Gemini Vision
+#         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
+
+#         headers = {"Content-Type": "application/json"}
+#         data = {
+#             "contents": [
+#                 {"parts": [{"text": prompt}], "media": pil_image}
+#             ]
+#         }
+
+#         response = requests.post(url, headers=headers, json=data)
+#         response.raise_for_status()
+#         result = response.json()
+
+#         # Extract the content returned by Gemini Vision
+#         model_output = result["candidates"][0]["content"]["parts"][0]["text"]
+#         return model_output
+
+#     except Exception as e:
+#         return f"Image analysis failed: {str(e)}"
+
+
+# def process_image_for_gemini(image: UploadFile) -> str:
+#     try:
+#         # Read image bytes
+#         image_bytes = image.file.read()
+#         pil_image = Image.open(io.BytesIO(image_bytes))
+
+#         # Convert image to base64
+#         buffered = io.BytesIO()
+#         pil_image.save(buffered, format="JPEG")
+#         img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+#         # Prepare the image for Gemini API (example prompt, you can adjust it as needed)
+#         prompt = "Is this image a professional headshot suitable for a job application?"
+
+#         # Make API call to Gemini
+#         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
+
+#         headers = {"Content-Type": "application/json"}
+#         data = {
+#             "contents": [
+#                 {"parts": [{"text": prompt}], "media": [{"base64": img_str}]}
+#             ]
+#         }
+
+#         response = requests.post(url, headers=headers, json=data)
+#         response.raise_for_status()
+#         result = response.json()
+
+#         # Extract the content returned by Gemini
+#         model_output = result["candidates"][0]["content"]["parts"][0]["text"]
+#         return model_output
+
+#     except Exception as e:
+#         return f"Image analysis failed: {str(e)}"
+
+def process_image_for_gemini(image: UploadFile) -> str:
+    try:
+        # Read image bytes and load with PIL
+        image_bytes = image.file.read()
+        pil_image = Image.open(io.BytesIO(image_bytes))
+
+        # Prompt to be sent with the image
+        prompt = "Is this image a professional headshot suitable for a job application?"
+
+        # Generate content with the Gemini vision model
+        response = model.generate_content([prompt, pil_image], stream=False)
+        response.resolve()
+
+        return response.text
+
+    except Exception as e:
+        return f"Image analysis failed: {str(e)}"  
 
 def photo_check_heuristic(photo_base64: str) -> str:
     def detect_format(b64: str) -> str:
@@ -66,86 +188,54 @@ def photo_check_heuristic(photo_base64: str) -> str:
     else:
         return "Not professional"
     
+def process_image_from_analysis(image_file: UploadFile):
+    try:
+        contents = image_file.file.read()
+        image = Image.open(BytesIO(contents))
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        
+        # 👇 Pass img_str to Gemini here if needed
+        # For now just return a dummy check
+        return "Valid photo detected and processed"
+
+    except Exception as e:
+        return f"Invalid image data: {str(e)}"
 
 
 def mock_photo_check(photo_base64: str) -> str:
     return photo_check_heuristic(photo_base64)
 
+async def extract_text_from_resume(file: UploadFile) -> str:
+    # Read the file content into memory
+    file_content = await file.read()
+    file_extension = file.filename.split('.')[-1].lower()
 
+    # Extract text based on file type
+    if file_extension == "pdf":
+        return extract_text_from_pdf(file_content)
+    elif file_extension == "docx":
+        return extract_text_from_docx(file_content)
+    else:
+        raise ValueError("Unsupported file type")
 
+def extract_text_from_pdf(file_content: bytes) -> str:
+    # Using PyMuPDF to extract text from a PDF
+    doc = fitz.open(stream=file_content, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text("text")
+    return text
 
-# def mock_photo_check(photo_base64: str) -> str:
-#     size = len(photo_base64)
-#     format_type = detect_image_format(photo_base64)
-
-#     # Format-based judgment
-#     if format_type in ["jpeg", "jpg"]:
-#         format_score = 1
-#     elif format_type == "png":
-#         format_score = 0
-#     else:
-#         format_score = -1
-
-#     # Size-based quality
-#     if size > 30000:
-#         quality_score = 2
-#     elif size > 10000:
-#         quality_score = 1
-#     elif size > 5000:
-#         quality_score = 0
-#     else:
-#         quality_score = -1
-
-#     total_score = format_score + quality_score
-
-#     # Fake professional judgment based on total score
-#     if total_score >= 2:
-#         result = "Looks professional"
-#     elif total_score == 1:
-#         result = "Decent, could be improved"
-#     else:
-#         result = "Not professional"
-
-#     # Add a touch of randomness
-#     if random.random() < 0.05:
-#         result = "Not professional" if result == "Looks professional" else "Looks professional"
-
-#     return result
-
-
-# def mock_photo_check(photo_base64: str) -> str:
-#     size = len(photo_base64)
-
-#     if size > 10000:
-#         base_check = "Looks professional"
-#     elif size > 5000:
-#         base_check = "Decent photo quality"
-#     else:
-#         base_check = "Poor photo quality"
-
-#     if random.random() < 0.1:
-#         base_check = "Not professional" if base_check == "Looks professional" else "Looks professional"
-
-#     return base_check
+def extract_text_from_docx(file_content: bytes) -> str:
+    # Using python-docx to extract text from a DOCX file
+    doc = Document(BytesIO(file_content))
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+    return text
 
 
 
 
-
-
-
-
-
-
-
-
-# import random
-# from typing import Tuple
-
-# def mock_score_and_feedback(resume: str, job: str) -> Tuple[int, str]:
-#     score = random.randint(40, 95)
-#     feedback = f"The resume is a {score}/100 match for this job description."
-#     return score, feedback
-
-# def mock_photo_check(photo_base64: str) -> str:
-#     return "Looks professional" if random.random() > 0.3 else "Not professional"
