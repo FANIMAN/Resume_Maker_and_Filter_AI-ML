@@ -53,3 +53,4 @@ dist/
 
 # System
 Thumbs.db
+.env
