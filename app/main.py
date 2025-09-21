@@ -4,7 +4,7 @@ from app.db.session import engine
 from app.models import ranking  # Triggers table creation
 
 app = FastAPI(
-    title="Mini Resume Ranker",
+    title="Resume Ranker AI",
     version="1.0.0",
     docs_url="/docs"
 )
