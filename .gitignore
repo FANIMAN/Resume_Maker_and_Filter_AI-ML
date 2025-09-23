@@ -2,11 +2,14 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.env
-.env.*
 *.sqlite3
 *.log
 *.db
+
+# Environment variables
+.env
+# allow example env files
+!.env.example
 
 # Virtual environment
 venv/
@@ -48,9 +51,5 @@ dist/
 .idea/
 *.iml
 
-# __Pycharm__
-*.idea/
-
-# System
+# Windows / System
 Thumbs.db
-.env
