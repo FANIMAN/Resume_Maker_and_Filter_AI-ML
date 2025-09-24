@@ -126,19 +126,8 @@ This will execute the tests and show the results in the terminal.
 ### What Works:
 - The FastAPI app is running and serving endpoints.
 - PostgreSQL integration is set up using Docker.
+- AI Model Integration: AI models are integrated with proper subscription keys and ensures that the AI evaluation can rank resumes more accurately. And  also on implemented caching and performance improvements for the AI model calls.
 - API documentation is accessible via Swagger UI at [http://localhost:8000/docs](http://localhost:8000/docs).
-
-### What Doesn’t Work:
-- AI models require a subscription and key access to function properly. Currently, these keys are not integrated, so the models are not operational.
-  
-### What You’d Improve with More Time:
-- **AI Model Integration**: With more time, I would integrate the AI models with proper subscription keys and ensure that the AI evaluation can rank resumes more accurately. I would also work on implementing caching and performance improvements for the AI model calls.
-
-- **User Authentication and Roles**: Implement a more robust authentication and role management system, allowing only authorized users (e.g., admins) to access certain features.
-
-- **UI Improvements**: If given more time, I would work on enhancing the frontend user experience by adding more features, improving the design, and ensuring it is mobile-responsive.
-
----
 
 ## Additional Notes
 
